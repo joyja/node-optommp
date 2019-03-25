@@ -1,0 +1,11 @@
+{
+  "name": "node-optommp",
+  "version": "0.0.1",
+  "description": "Opto22MMP protocol drivers for nodejs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
