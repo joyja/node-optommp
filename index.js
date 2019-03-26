@@ -95,6 +95,17 @@ class O22MMP {
         })
     })
   }
+  setDigitalPointState(module, channel, state) {
+    const offset = (O22SIOUT.BASE_DPOINT_WRITE
+      + (module * O22SIOUT.OFFSET_DPOINT_MOD)
+      + (channel * O22SIOUT.OFFSET_DPOINT))
+      return new Promise((resolve, reject) => {
+        this.writeBlock(offset, [0,0,0,state])
+          .then((data) => {
+            resolve(this.unpackWriteResponse(data))
+          })
+      })
+  }
   //ANALOG POINTS
   getAnalogPointValue(module, channel) {
     const offset = (O22SIOUT.BASE_APOINT_READ
@@ -107,6 +118,17 @@ class O22MMP {
         })
         .catch(reject)
     })
+  }
+  setAnalogPointState(module, channel, value) {
+    const offset = (O22SIOUT.BASE_APOINT_WRITE
+      + (module * O22SIOUT.OFFSET_APOINT_MOD)
+      + (channel * O22SIOUT.OFFSET_APOINT))
+      return new Promise((resolve, reject) => {
+        this.writeBlock(offset, this.packFloat(value))
+          .then((data) => {
+            resolve(this.unpackWriteResponse(data))
+          })
+      })
   }
   // MIN / MAX VALUES
   getAnalogPointMin(module, channel) {
@@ -145,7 +167,20 @@ class O22MMP {
       const offset = O22SIOUT.BASE_SCRATCHPAD_INTEGER + (index * 0x04)
       this.readBlock(offset, 4)
         .then((data) => {
-          resolve(parseInteger(this.unpackReadResponse(data, 'i')))
+          resolve(this.unpackReadResponse(data, 'i'))
+        })
+        .catch(reject)
+    })
+  }
+  setScratchPadIntegerArea(index, value) {
+    return new Promise((resolve, reject) => {
+      if (index < 0 || index > O22SIOUT.MAX_ELEMENTS_INTEGER) {
+        reject(new Error('Index out off bounds'))
+      }
+      const offset = O22SIOUT.BASE_SCRATCHPAD_INTEGER + (index * 0x04)
+      this.writeBlock(offset, this.packInteger(value))
+        .then((data) => {
+          resolve(this.unpackWriteResponse(data))
         })
         .catch(reject)
     })
@@ -153,13 +188,46 @@ class O22MMP {
   //FLOATS
   getScratchPadFloatArea(index) {
     return new Promise((resolve, reject) => {
-      if (index < 0 || index > O22SIOUT.MAX_ELEMENTS_FLOAT) {
+      if (index > O22SIOUT.MAX_ELEMENTS_FLOAT) {
         reject(new Error('Index out off bounds'))
       }
       const offset = O22SIOUT.BASE_SCRATCHPAD_FLOAT + (index * 0x04)
       this.readBlock(offset, 4)
         .then((data) => {
-          resolve(parseFloat(this.unpackReadResponse(data, 'f')))
+          resolve(this.unpackReadResponse(data, 'f'))
+        })
+        .catch(reject)
+    })
+  }
+  setScratchPadFloatArea(index, value) {
+    return new Promise((resolve, reject) => {
+      if (index > O22SIOUT.MAX_ELEMENTS_FLOAT) {
+        reject(new Error('Index out off bounds'))
+      }
+      const offset = O22SIOUT.BASE_SCRATCHPAD_FLOAT + (index * 0x04)
+      this.writeBlock(offset, this.packFloat(value))
+        .then((data) => {
+          resolve(this.unpackWriteResponse(data))
+        })
+        .catch(reject)
+    })
+  }
+  //STRINGS
+  getScratchPadStringArea(index) {
+    return new Promise((resolve, reject) => {
+      const loc = O22SIOUT.OFFSET_SCRATCHPAD_STRING * index
+      if (index < 0 || loc >= O22SIOUT.MAX_BYTES_STRING) {
+        reject(new Error('Index out off bounds'))
+      }
+      const offset = O22SIOUT.BASE_SCRATCHPAD_STRING + loc
+      this.readBlock(offset + 0x01, 1)
+        .then((data) => {
+          const size = [...this.unpackReadResponse(data, 'NONE').slice(16)].toString()
+          this.readBlock(offset + 0x02, size)
+            .then((data) => {
+              resolve(this.unpackReadResponse(data, 'NONE').slice(16).toString())
+            })
+            .catch(reject)
         })
         .catch(reject)
     })
@@ -199,10 +267,34 @@ class O22MMP {
     }
     return output
   }
+  unpackWriteResponse(data) {
+    return data.readIntBE(4,8)
+  }
+  // METHODS TO PACKAGE DATA INTO HEX ARRAYS
+  packFloat(value) {
+    const valueToWrite = new Buffer([0,0,0,0])
+    valueToWrite.writeFloatBE(value)
+    return valueToWrite
+  }
+  packInteger(value) {
+    const valueToWrite = new Buffer([0,0,0,0])
+    valueToWrite.writeIntBE(value,0,4)
+    return valueToWrite
+  }
   // CORE MEMORY ACCESS FUNCTIONS
   // ReadBlock
   readBlock(address, size) {
     const block = this.buildReadBlockRequest(address, size)
+    const nSent = this.sock.write(block)
+    return new Promise((resolve, reject) => {
+      this.sock.on('data', (data) => {
+        resolve(data)
+      })
+      this.sock.on('error', reject)
+    })
+  }
+  writeBlock(address, value) {
+    const block = this.buildWriteBlockRequest(address, value)
     const nSent = this.sock.write(block)
     return new Promise((resolve, reject) => {
       this.sock.on('data', (data) => {
@@ -221,6 +313,16 @@ class O22MMP {
       0,size,0,0
     ]
     return new Buffer(block)
+  }
+  buildWriteBlockRequest(dest, data) {
+    const tcode = O22SIOUT.TCODE_WRITE_BLOCK_REQUEST
+    const block = [
+      0, 0, (this.tlabel << 2), (tcode << 4), 0, 0, 255, 255,
+      parseInt(dest.toString(16).slice(0,2),16), parseInt(dest.toString(16).slice(2,4),16),
+      parseInt(dest.toString(16).slice(4,6),16), parseInt(dest.toString(16).slice(6,8),16),
+      0,data.length,0,0
+    ]
+    return new Buffer([...block,...data])
   }
   // CLOSE SOCKET / END SESSION
   close() {
