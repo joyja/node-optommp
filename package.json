@@ -1,6 +1,6 @@
 {
   "name": "node-optommp",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Opto22MMP protocol drivers for nodejs",
   "main": "index.js",
   "scripts": {
