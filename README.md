@@ -15,7 +15,7 @@ npm install node-optommp
 ```
 const O22MMP = require('node-optommp')
 const host = '192.168.1.1'
-const client = new O22MMP(host) ##omit host to connect to loclahost 
+const client = new O22MMP(host) ##omit host to connect to localhost 
 ```
 
 All read and write methods return promises:
