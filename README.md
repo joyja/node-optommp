@@ -1,6 +1,6 @@
 # node-optommp
 
-Opto22MMP client written in javascript. Allows Access to Opto22 groov EPIC processors using the OptoMMP protocol directly from nodejs. This was adapted from the python toolkit, so if you need the same thing in python go ![here](https://github.com/optodeveloper/optommp).
+Opto22MMP client written in javascript. Allows Access to Opto22 groov EPIC processors using the OptoMMP protocol directly from nodejs. This was adapted from the python toolkit, so if you need the same thing in python go [here](https://github.com/optodeveloper/optommp).
 
 ## Getting Started
 
