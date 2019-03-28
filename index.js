@@ -4,7 +4,7 @@ const O22SIOUT = require('./o22siout')
 class O22MMP {
   constructor(host = null) {
     host = host ? host : '127.0.0.1'
-    this.sock = net.connect({ port: 2001 })
+    this.sock = net.connect({ host, port: 2001 })
     this.tlabel = 0
   }
   // Misc MMP Access Functions
